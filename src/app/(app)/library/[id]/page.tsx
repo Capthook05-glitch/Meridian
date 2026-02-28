@@ -1,11 +1,11 @@
 'use client'
 
-import { use, useState } from 'react'
+import { use, useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
-  ArrowLeft, Star, Archive, Trash2, Globe, Clock, User,
-  Sparkles, ChevronRight, Loader2, BookOpen
+  ArrowLeft, Star, Archive, Globe, Clock, User,
+  Sparkles, ChevronRight, Loader2, BookOpen, Trash2, MessageSquare, Check, X
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -14,16 +14,153 @@ import { Badge } from '@/components/ui/badge'
 import { HighlightPopover } from '@/components/reader/HighlightPopover'
 import { useReaderStore } from '@/stores/reader-store'
 import { formatDate, formatReadTime } from '@/lib/utils/format'
-import type { Document, Highlight } from '@/types'
+import type { Document, Highlight, HighlightColor } from '@/types'
 import { cn } from '@/lib/utils/cn'
 
 const HL_COLORS: Record<string, string> = {
-  yellow: 'rgba(252,211,77,0.3)',
-  green: 'rgba(110,231,183,0.3)',
-  blue: 'rgba(147,197,253,0.3)',
-  pink: 'rgba(249,168,212,0.3)',
-  orange: 'rgba(252,165,165,0.3)',
-  purple: 'rgba(196,181,253,0.3)',
+  yellow: 'rgba(252,211,77,0.35)',
+  green: 'rgba(110,231,183,0.35)',
+  blue: 'rgba(147,197,253,0.35)',
+  pink: 'rgba(249,168,212,0.35)',
+  orange: 'rgba(252,165,165,0.35)',
+  purple: 'rgba(196,181,253,0.35)',
+}
+
+const HL_BORDER: Record<string, string> = {
+  yellow: '#FCD34D',
+  green: '#6EE7B7',
+  blue: '#93C5FD',
+  pink: '#F9A8D4',
+  orange: '#FCA5A5',
+  purple: '#C4B5FD',
+}
+
+// Inject highlight marks into raw HTML string
+function injectHighlights(html: string, highlights: Highlight[]): string {
+  if (!highlights.length || !html) return html
+  // Sort longest first to avoid partial overlaps replacing shorter text first
+  const sorted = [...highlights].sort((a, b) => b.text.length - a.text.length)
+  let result = html
+  for (const h of sorted) {
+    // Escape regex special chars
+    const escaped = h.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const color = HL_COLORS[h.color] || HL_COLORS.yellow
+    const border = HL_BORDER[h.color] || HL_BORDER.yellow
+    const mark = `<mark data-hl-id="${h.id}" style="background:${color};border-bottom:2px solid ${border};border-radius:2px;padding:0 1px;cursor:pointer;">${h.text}</mark>`
+    try {
+      result = result.replace(new RegExp(escaped, 'g'), mark)
+    } catch {
+      // Skip if regex is invalid
+    }
+  }
+  return result
+}
+
+function HighlightCard({
+  highlight,
+  documentId,
+  onUpdated,
+  onDeleted,
+}: {
+  highlight: Highlight
+  documentId: string
+  onUpdated: () => void
+  onDeleted: () => void
+}) {
+  const [editingNote, setEditingNote] = useState(false)
+  const [note, setNote] = useState(highlight.note || '')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (editingNote) textareaRef.current?.focus()
+  }, [editingNote])
+
+  async function saveNote() {
+    if (note === (highlight.note || '')) { setEditingNote(false); return }
+    setSaving(true)
+    await fetch(`/api/highlights/${highlight.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ note: note || null }),
+    })
+    setSaving(false)
+    setEditingNote(false)
+    onUpdated()
+  }
+
+  async function deleteHighlight() {
+    setDeleting(true)
+    await fetch(`/api/highlights/${highlight.id}`, { method: 'DELETE' })
+    onDeleted()
+  }
+
+  return (
+    <div
+      className="rounded-lg p-3 text-sm leading-relaxed group relative"
+      style={{ background: HL_COLORS[highlight.color] || HL_COLORS.yellow, borderLeft: `3px solid ${HL_BORDER[highlight.color] || HL_BORDER.yellow}` }}
+    >
+      <p className="text-[var(--color-text)] mb-1">{highlight.text}</p>
+
+      {editingNote ? (
+        <div className="mt-2">
+          <textarea
+            ref={textareaRef}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveNote() }}
+            placeholder="Add a note…"
+            rows={2}
+            className="w-full text-xs bg-[var(--color-bg-elevated)] border border-[var(--color-border)] rounded p-2 text-[var(--color-text)] placeholder:text-[var(--color-text-tertiary)] resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+          />
+          <div className="flex items-center gap-1 mt-1">
+            <button
+              onClick={saveNote}
+              disabled={saving}
+              className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-[var(--color-accent)] text-white"
+            >
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+              Save
+            </button>
+            <button
+              onClick={() => { setNote(highlight.note || ''); setEditingNote(false) }}
+              className="flex items-center gap-1 text-xs px-2 py-0.5 rounded text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-hover)]"
+            >
+              <X className="h-3 w-3" /> Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {highlight.note && (
+            <p
+              onClick={() => setEditingNote(true)}
+              className="mt-1 text-xs text-[var(--color-text-secondary)] italic cursor-pointer hover:text-[var(--color-text)]"
+            >
+              {highlight.note}
+            </p>
+          )}
+          <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => setEditingNote(true)}
+              className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text)] px-1.5 py-0.5 rounded hover:bg-[var(--color-bg-hover)]"
+            >
+              <MessageSquare className="h-3 w-3" />
+              {highlight.note ? 'Edit note' : 'Add note'}
+            </button>
+            <button
+              onClick={deleteHighlight}
+              disabled={deleting}
+              className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-danger)] px-1.5 py-0.5 rounded hover:bg-[var(--color-bg-hover)] ml-auto"
+            >
+              {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
 }
 
 export default function ReaderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,6 +170,8 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const { fontSize, lineHeight, fontFamily } = useReaderStore()
   const router = useRouter()
   const queryClient = useQueryClient()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollSaveTimer = useRef<ReturnType<typeof setTimeout>>()
 
   const { data: doc, isLoading } = useQuery<Document>({
     queryKey: ['document', id],
@@ -50,6 +189,39 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
       return res.json()
     },
   })
+
+  // Restore scroll position
+  useEffect(() => {
+    if (!doc || !scrollRef.current) return
+    const saved = localStorage.getItem(`read-pos-${id}`)
+    if (saved) {
+      scrollRef.current.scrollTop = parseInt(saved, 10)
+    }
+  }, [doc, id])
+
+  // Save scroll position on scroll (debounced 500ms)
+  const handleScroll = useCallback(() => {
+    clearTimeout(scrollSaveTimer.current)
+    scrollSaveTimer.current = setTimeout(() => {
+      if (!scrollRef.current) return
+      const pos = scrollRef.current.scrollTop
+      localStorage.setItem(`read-pos-${id}`, String(pos))
+      // Save reading progress to DB
+      const progress = scrollRef.current.scrollTop /
+        Math.max(1, scrollRef.current.scrollHeight - scrollRef.current.clientHeight)
+      fetch(`/api/documents/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reading_progress: Math.min(1, progress) }),
+      }).catch(() => {})
+    }, 500)
+  }, [id])
+
+  // Inject highlights into content HTML
+  const contentWithHighlights = useMemo(
+    () => injectHighlights(doc?.content_html || '', highlights),
+    [doc?.content_html, highlights]
+  )
 
   async function toggleFavorite() {
     if (!doc) return
@@ -95,13 +267,10 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
     )
   }
 
-  // Inject highlights into HTML
-  const contentWithHighlights = doc.content_html || ''
-
   return (
     <div className="flex h-full">
       {/* Main reader */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto" onScroll={handleScroll}>
         {/* Top bar */}
         <div className="sticky top-0 z-10 glass border-b border-[var(--color-border)] px-6 py-3 flex items-center gap-3">
           <Link href="/library">
@@ -110,6 +279,17 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             </Button>
           </Link>
           <p className="text-sm text-[var(--color-text-secondary)] truncate flex-1">{doc.title}</p>
+          {doc.reading_progress > 0.05 && (
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)]">
+              <div className="w-16 h-1 rounded-full bg-[var(--color-border)]">
+                <div
+                  className="h-1 rounded-full bg-[var(--color-accent)]"
+                  style={{ width: `${Math.round(doc.reading_progress * 100)}%` }}
+                />
+              </div>
+              {Math.round(doc.reading_progress * 100)}%
+            </div>
+          )}
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon-sm" onClick={toggleFavorite}>
               <Star className={cn('h-4 w-4', doc.is_favorite && 'fill-[var(--color-warning)] text-[var(--color-warning)]')} />
@@ -184,7 +364,6 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             </motion.div>
           )}
 
-          {/* Highlights sidebar count */}
           {highlights.length > 0 && (
             <div className="mb-4 text-xs text-[var(--color-text-tertiary)]">
               {highlights.length} highlight{highlights.length !== 1 ? 's' : ''}
@@ -219,16 +398,13 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             </h3>
             <div className="space-y-3">
               {highlights.map((h) => (
-                <div
+                <HighlightCard
                   key={h.id}
-                  className="rounded-lg p-3 text-sm leading-relaxed"
-                  style={{ background: HL_COLORS[h.color] || HL_COLORS.yellow }}
-                >
-                  <p className="text-[var(--color-text)]">{h.text}</p>
-                  {h.note && (
-                    <p className="mt-2 text-xs text-[var(--color-text-secondary)] italic">{h.note}</p>
-                  )}
-                </div>
+                  highlight={h}
+                  documentId={id}
+                  onUpdated={() => queryClient.invalidateQueries({ queryKey: ['highlights', id] })}
+                  onDeleted={() => queryClient.invalidateQueries({ queryKey: ['highlights', id] })}
+                />
               ))}
             </div>
           </div>

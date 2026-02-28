@@ -12,6 +12,11 @@ interface DueResponse {
   total_due: number
 }
 
+interface HighlightStats {
+  total: number
+  graduated: number
+}
+
 export default function ReviewDashboard() {
   const { data, isLoading } = useQuery<DueResponse>({
     queryKey: ['review-due'],
@@ -22,12 +27,26 @@ export default function ReviewDashboard() {
     refetchInterval: 60000,
   })
 
+  const { data: hlStats } = useQuery<HighlightStats>({
+    queryKey: ['highlight-stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/highlights?limit=2000')
+      if (!res.ok) return { total: 0, graduated: 0 }
+      const list: { sr_status: string }[] = await res.json()
+      return {
+        total: list.length,
+        graduated: list.filter(h => h.sr_status === 'graduated').length,
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
   const dueCount = data?.total_due ?? 0
 
   const stats = [
-    { label: 'Due today', value: dueCount, icon: Zap, color: 'text-[var(--color-warning)]', bg: 'bg-[var(--color-warning)]/10' },
-    { label: 'Total highlights', value: '—', icon: Brain, color: 'text-[var(--color-accent-300)]', bg: 'bg-[var(--color-accent)]/10' },
-    { label: 'Mastered', value: '—', icon: Target, color: 'text-[var(--color-success)]', bg: 'bg-[var(--color-success)]/10' },
+    { label: 'Due today', value: isLoading ? '…' : dueCount, icon: Zap, color: 'text-[var(--color-warning)]', bg: 'bg-[var(--color-warning)]/10' },
+    { label: 'Total highlights', value: hlStats ? hlStats.total : '…', icon: Brain, color: 'text-[var(--color-accent-300)]', bg: 'bg-[var(--color-accent)]/10' },
+    { label: 'Mastered', value: hlStats ? hlStats.graduated : '…', icon: Target, color: 'text-[var(--color-success)]', bg: 'bg-[var(--color-success)]/10' },
   ]
 
   return (
@@ -86,7 +105,7 @@ export default function ReviewDashboard() {
                   <Icon className={`h-4 w-4 ${stat.color}`} />
                 </div>
                 <p className="text-xl font-bold text-[var(--color-text)]">
-                  {isLoading && stat.value === dueCount ? <Loader2 className="h-5 w-5 animate-spin" /> : stat.value}
+                  {stat.value}
                 </p>
                 <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{stat.label}</p>
               </motion.div>

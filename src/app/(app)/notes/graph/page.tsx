@@ -94,19 +94,25 @@ export default function KnowledgeGraphPage() {
   })
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null)
   const nodesRef = useRef<GraphNode[]>([])
+  // Cache nodeMap so we don't rebuild it every frame
+  const nodeMapRef = useRef<Map<string, GraphNode>>(new Map())
+  // Alpha for physics cooling — starts hot, cools down so simulation stops when settled
+  const alphaRef = useRef(1.0)
 
-  // Sync nodes ref
+  // Sync nodes ref and rebuild cached nodeMap when data changes
   useEffect(() => {
     nodesRef.current = data.nodes
+    nodeMapRef.current = new Map(data.nodes.map(n => [n.id, n]))
+    alphaRef.current = 1.0 // reheat when graph changes
   }, [data.nodes])
 
-  // Force-directed simulation
+  // Force-directed simulation — uses cached nodeMapRef, cools via alphaRef
   const simulate = useCallback(() => {
     const nodes = nodesRef.current
     const edges = data.edges
     if (!nodes.length) return
 
-    const alpha = 0.05
+    const alpha = alphaRef.current * 0.05
     const repulsion = 3000
     const attraction = 0.05
     const damping = 0.85
@@ -128,8 +134,8 @@ export default function KnowledgeGraphPage() {
       }
     }
 
-    // Attraction along edges
-    const nodeMap = new Map(nodes.map(n => [n.id, n]))
+    // Attraction along edges — use cached nodeMap, no rebuild
+    const nodeMap = nodeMapRef.current
     for (const edge of edges) {
       const src = nodeMap.get(edge.source)
       const tgt = nodeMap.get(edge.target)
@@ -147,12 +153,10 @@ export default function KnowledgeGraphPage() {
       tgt.vy -= fy
     }
 
-    // Center gravity
+    // Center gravity + apply velocity
     for (const node of nodes) {
       node.vx += -node.x * centerStrength
       node.vy += -node.y * centerStrength
-
-      // Apply velocity + damping
       node.vx *= damping
       node.vy *= damping
       if (!dragging.current.node || dragging.current.node.id !== node.id) {
@@ -160,9 +164,12 @@ export default function KnowledgeGraphPage() {
         node.y += node.vy
       }
     }
+
+    // Cool down — reduce alpha so simulation slows and eventually stops
+    alphaRef.current *= 0.99
   }, [data.edges])
 
-  // Draw
+  // Draw — uses cached nodeMapRef instead of rebuilding every frame
   const draw = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -185,7 +192,7 @@ export default function KnowledgeGraphPage() {
     ctx.translate(W / 2 + cx, H / 2 + cy)
     ctx.scale(zoom, zoom)
 
-    const nodeMap = new Map(nodes.map(n => [n.id, n]))
+    const nodeMap = nodeMapRef.current
 
     // Draw edges
     for (const edge of edges) {
@@ -238,16 +245,15 @@ export default function KnowledgeGraphPage() {
     ctx.restore()
   }, [data.edges, hoveredNode])
 
-  // Animation loop
+  // Animation loop — skips physics once alpha cools below threshold
   useEffect(() => {
     if (loading || !data.nodes.length) return
 
-    let frame = 0
     const loop = () => {
-      if (frame % 1 === 0) simulate() // run physics every frame
+      // Only run physics while hot (alpha > 0.005), always redraw for hover etc.
+      if (alphaRef.current > 0.005) simulate()
       draw()
       animRef.current = requestAnimationFrame(loop)
-      frame++
     }
     animRef.current = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(animRef.current)
@@ -313,6 +319,7 @@ export default function KnowledgeGraphPage() {
     const node = hitTest(x, y)
     if (node) {
       dragging.current.node = node
+      alphaRef.current = 0.3 // reheat so graph resettles after drag
     } else {
       dragging.current.panStart = {
         x: e.clientX - camera.current.x,
