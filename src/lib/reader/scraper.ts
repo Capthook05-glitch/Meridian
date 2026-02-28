@@ -14,20 +14,50 @@ export interface ScrapedArticle {
   estimated_read_time_minutes: number
 }
 
-export async function scrapeURL(url: string): Promise<ScrapedArticle> {
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; MeridianBot/1.0)',
-      'Accept': 'text/html,application/xhtml+xml',
-    },
-    signal: AbortSignal.timeout(15000),
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Cache-Control': 'no-cache',
+  'Pragma': 'no-cache',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1',
+}
+
+async function fetchHTML(url: string): Promise<string> {
+  // First attempt with full browser headers
+  let response = await fetch(url, {
+    headers: BROWSER_HEADERS,
+    redirect: 'follow',
+    signal: AbortSignal.timeout(20000),
   })
+
+  // Some sites block the Sec-Fetch headers — retry with minimal headers
+  if (response.status === 403 || response.status === 429) {
+    response = await fetch(url, {
+      headers: {
+        'User-Agent': BROWSER_HEADERS['User-Agent'],
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(20000),
+    })
+  }
 
   if (!response.ok) {
     throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`)
   }
 
-  const html = await response.text()
+  return response.text()
+}
+
+export async function scrapeURL(url: string): Promise<ScrapedArticle> {
+  const html = await fetchHTML(url)
   const dom = new JSDOM(html, { url })
   const reader = new Readability(dom.window.document)
   const article = reader.parse()
