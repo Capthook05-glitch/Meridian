@@ -1,0 +1,210 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* ─── Color Palette ─────────────────────────────── */
+  --color-bg:                #0A0A0F;
+  --color-bg-secondary:      #111118;
+  --color-bg-tertiary:       #16161F;
+  --color-bg-elevated:       #1C1C28;
+  --color-bg-hover:          #1E1E2D;
+
+  --color-border:            #1E1E2D;
+  --color-border-strong:     #2A2A3D;
+  --color-border-focus:      #6366F1;
+
+  --color-text:              #F2F2F7;
+  --color-text-secondary:    #9999B3;
+  --color-text-tertiary:     #666680;
+  --color-text-accent:       #A5B4FC;
+
+  --color-accent-300:        #A5B4FC;
+  --color-accent-400:        #818CF8;
+  --color-accent:            #6366F1;
+  --color-accent-600:        #4F46E5;
+
+  --color-success:           #10B981;
+  --color-warning:           #F59E0B;
+  --color-danger:            #EF4444;
+
+  --color-hl-yellow:         #FCD34D;
+  --color-hl-green:          #6EE7B7;
+  --color-hl-blue:           #93C5FD;
+  --color-hl-pink:           #F9A8D4;
+  --color-hl-orange:         #FCA5A5;
+  --color-hl-purple:         #C4B5FD;
+
+  /* ─── Typography ────────────────────────────────── */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Lora', ui-serif, Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ─── Radius ────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+/* ─── Base ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { color-scheme: dark; scroll-behavior: smooth; }
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3A3A55; }
+
+/* ─── Selection ─────────────────────────────────────── */
+::selection { background: rgba(99,102,241,0.3); color: var(--color-text); }
+
+/* ─── Focus ring ────────────────────────────────────── */
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* ─── Reader Typography ─────────────────────────────── */
+.reader-content {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 1.85;
+  color: #E8E8F0;
+  max-width: 72ch;
+}
+.reader-content h1,.reader-content h2,.reader-content h3,
+.reader-content h4,.reader-content h5,.reader-content h6 {
+  font-family: var(--font-sans); font-weight: 600;
+  color: var(--color-text); margin-top: 2em; margin-bottom: 0.5em;
+}
+.reader-content h1 { font-size: 2em; }
+.reader-content h2 { font-size: 1.5em; }
+.reader-content h3 { font-size: 1.25em; }
+.reader-content p { margin-bottom: 1.25em; }
+.reader-content a { color: var(--color-accent-300); text-decoration: underline; text-underline-offset: 3px; }
+.reader-content blockquote {
+  border-left: 3px solid var(--color-accent); padding: 0.5em 1.25em;
+  margin: 1.5em 0; background: var(--color-bg-secondary);
+  border-radius: 0 8px 8px 0; color: var(--color-text-secondary); font-style: italic;
+}
+.reader-content code {
+  font-family: var(--font-mono); font-size: 0.85em;
+  background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+  padding: 0.15em 0.4em; border-radius: 4px; color: var(--color-accent-300);
+}
+.reader-content pre {
+  background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+  border-radius: 10px; padding: 1.25em; overflow-x: auto; margin: 1.5em 0;
+}
+.reader-content pre code { background: none; border: none; padding: 0; }
+.reader-content img { max-width: 100%; border-radius: 10px; margin: 1.5em 0; }
+.reader-content ul,.reader-content ol { padding-left: 1.5em; margin-bottom: 1.25em; }
+.reader-content li { margin-bottom: 0.4em; }
+.reader-content hr { border: none; border-top: 1px solid var(--color-border); margin: 2em 0; }
+
+/* ─── Highlight marks ───────────────────────────────── */
+mark[data-color="yellow"] { background: rgba(252,211,77,0.25); color: inherit; border-radius: 2px; padding: 1px 0; }
+mark[data-color="green"]  { background: rgba(110,231,183,0.25); color: inherit; border-radius: 2px; padding: 1px 0; }
+mark[data-color="blue"]   { background: rgba(147,197,253,0.25); color: inherit; border-radius: 2px; padding: 1px 0; }
+mark[data-color="pink"]   { background: rgba(249,168,212,0.25); color: inherit; border-radius: 2px; padding: 1px 0; }
+mark[data-color="orange"] { background: rgba(252,165,165,0.25); color: inherit; border-radius: 2px; padding: 1px 0; }
+mark[data-color="purple"] { background: rgba(196,181,253,0.25); color: inherit; border-radius: 2px; padding: 1px 0; }
+
+/* ─── TipTap editor ─────────────────────────────────── */
+.tiptap { outline: none; min-height: 200px; padding: 1.25rem; color: var(--color-text); font-size: 15px; line-height: 1.75; }
+.tiptap p { margin-bottom: 0.75em; }
+.tiptap p:last-child { margin-bottom: 0; }
+.tiptap h1 { font-size: 2em; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; }
+.tiptap h2 { font-size: 1.5em; font-weight: 600; margin-top: 1.25em; margin-bottom: 0.4em; }
+.tiptap h3 { font-size: 1.2em; font-weight: 600; margin-top: 1em; margin-bottom: 0.3em; }
+.tiptap ul,.tiptap ol { padding-left: 1.5em; margin-bottom: 0.75em; }
+.tiptap li { margin-bottom: 0.25em; }
+.tiptap blockquote {
+  border-left: 3px solid var(--color-accent); padding: 0.4em 1em;
+  margin: 1em 0; background: var(--color-bg-secondary);
+  border-radius: 0 6px 6px 0; color: var(--color-text-secondary);
+}
+.tiptap code {
+  font-family: var(--font-mono); font-size: 0.85em;
+  background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+  padding: 0.15em 0.35em; border-radius: 4px; color: var(--color-accent-300);
+}
+.tiptap pre {
+  background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 1em; overflow-x: auto; margin: 1em 0;
+}
+.tiptap pre code { background: none; border: none; padding: 0; color: var(--color-text); }
+.tiptap a { color: var(--color-accent-300); text-decoration: underline; text-underline-offset: 3px; }
+.tiptap mark { border-radius: 2px; padding: 1px 0; }
+.tiptap .is-editor-empty:first-child::before {
+  content: attr(data-placeholder); float: left;
+  color: var(--color-text-tertiary); pointer-events: none; height: 0;
+}
+.tiptap .wikilink {
+  color: var(--color-accent-300); background: rgba(99,102,241,0.12);
+  padding: 1px 4px; border-radius: 4px; text-decoration: none;
+  cursor: pointer; transition: background 0.15s;
+}
+.tiptap .wikilink:hover { background: rgba(99,102,241,0.22); }
+.tiptap .wikilink--missing { color: var(--color-warning); background: rgba(245,158,11,0.12); }
+
+/* ─── tldraw overrides ──────────────────────────────── */
+.tl-canvas { background: var(--color-bg) !important; }
+
+/* ─── Mention suggestion dropdown ──────────────────── */
+.mention-dropdown {
+  background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 4px; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  min-width: 220px; max-height: 240px; overflow-y: auto;
+}
+.mention-item {
+  padding: 6px 10px; border-radius: 5px; cursor: pointer;
+  color: var(--color-text); font-size: 13px; transition: background 0.1s;
+}
+.mention-item:hover,.mention-item.is-selected { background: var(--color-bg-hover); }
+
+/* ─── Glass effect ──────────────────────────────────── */
+.glass {
+  background: rgba(17,17,24,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border);
+}
+
+/* ─── Review card flip ──────────────────────────────── */
+.flip-card { perspective: 1000px; }
+.flip-card-inner {
+  position: relative; width: 100%; height: 100%;
+  transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+  transform-style: preserve-3d;
+}
+.flip-card.flipped .flip-card-inner { transform: rotateY(180deg); }
+.flip-card-front,.flip-card-back {
+  position: absolute; width: 100%; height: 100%;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.flip-card-back { transform: rotateY(180deg); }
+
+/* ─── Animations ────────────────────────────────────── */
+@keyframes fade-in { from { opacity:0 } to { opacity:1 } }
+@keyframes slide-up { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:translateY(0) } }
+@keyframes shimmer {
+  0% { background-position: -200% 0 }
+  100% { background-position: 200% 0 }
+}
+.animate-fade-in { animation: fade-in 0.2s ease; }
+.animate-slide-up { animation: slide-up 0.2s ease; }
+.skeleton {
+  background: linear-gradient(90deg, var(--color-bg-tertiary) 25%, var(--color-bg-elevated) 50%, var(--color-bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
